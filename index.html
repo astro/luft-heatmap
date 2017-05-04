@@ -148,7 +148,7 @@
              onAdd: function() {
                  var container = L.DomUtil.create('div', 'legend');
                  var span = L.DomUtil.create('span', '', container);
-                 span.textContent = Math.ceil(minTemperature) + '°C';
+                 span.textContent = Math.floor(minTemperature) + '°C';
                  var span = L.DomUtil.create('span', 'colorbar', container);
                  span.textContent = ' ';
                  var span = L.DomUtil.create('span', '', container);
