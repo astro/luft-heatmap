@@ -95,7 +95,7 @@
                                                                   180 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
                                  var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
 
-                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
+                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 30%, ' + alpha + ')';
                                  ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
                              }
                          }
