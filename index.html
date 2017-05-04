@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet.heat demo</title>
+    <link rel="stylesheet" href="leaflet.css" />
+    <script src="leaflet.js"></script>
+    <script src="leaflet-heat.js"></script>
+    <style>
+     #map { margin: 0; padding: 0; width: 100vw; height: 100vh; }
+     body { margin: 0; padding: 0; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <script>
+
+     var map = L.map('map').setView([50, 12], 7);
+
+     var tiles = L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg', {
+         attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
+     }).addTo(map);
+
+     function renderData(data) {
+         var temperatures = data.map(function(value) {
+             return Number(value.temperature);
+         }).sort(function(a, b) {
+             return a - b;
+         });
+
+         // 10% percentile
+         var minTemperature = temperatures[Math.floor(.10 * temperatures.length)];
+         // 90% percentile
+         var maxTemperature = temperatures[Math.floor(.90 * temperatures.length)];
+         console.log('Temperature: ' + minTemperature + '..' + maxTemperature);
+         
+         var RECT_SIZE = 16;
+         var MAX_DISTANCE = 50000;  /* 50 km */
+         var CanvasLayer = L.GridLayer.extend({
+             createTile: function(coords){
+                 var size = this.getTileSize();
+                 
+                 // create a <canvas> element for drawing
+                 var tile = L.DomUtil.create('canvas', 'leaflet-tile');
+                 tile.width = size.x;
+                 tile.height = size.y;
+                 // draw something asynchronously and pass the tile to the done() callback
+                 var ctx = tile.getContext('2d');
+                 for(var y = 0; y < tile.height; y += RECT_SIZE) {
+                     for(var x = 0; x < tile.width; x += RECT_SIZE) {
+                         var location = map.unproject({
+                             x: coords.x * size.x + x,
+                             y: coords.y * size.y + y
+                         }, coords.z);
+
+                         var nearestMinDist = null;
+                         var temperature = 0;
+                         var totalWeight = 0;
+                         for(var i = 0; i < data.length; i++) {
+                             var value = data[i];
+                             var distance = location.distanceTo(value.location);
+                             if (distance >= MAX_DISTANCE) {
+                                 continue;
+                             }
+                             if (nearestMinDist === null ||
+                                 distance < nearestMinDist) {
+
+                                 nearestMinDist = distance;
+                             }
+                             var weight = MAX_DISTANCE / Math.pow(distance, 2);
+                             temperature += weight * value.temperature;
+                             totalWeight += weight;
+                         }
+                         temperature /= totalWeight;
+
+                         if (nearestMinDist !== null) {
+                             var phase = Math.max(0, Math.min(180,
+                                 180 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+                             var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
+
+                             ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
+                             ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
+                         }
+                     }
+                 }
+
+                 return tile;
+             }
+         });
+
+         new CanvasLayer().addTo(map);
+     }
+     var VALUE_TYPE = 'temperature';
+     /* var VALUE_TYPE = 'P1';*/
+     fetch('https://api.luftdaten.info/static/v1/data.json')
+         .then(res => res.json())
+         .then(json => json.map(sensor => {
+             var temperatureValue = sensor.sensordatavalues.filter(value => value.value_type === VALUE_TYPE)[0];
+             if (temperatureValue) {
+                 return {
+                     temperature: Number(temperatureValue.value),
+                     location: L.latLng(Number(sensor.location.latitude), Number(sensor.location.longitude))
+                 };
+             } else {
+                 return null;
+             }
+         }).filter(value => !! value))
+         .then(data => renderData(data));
+     
+
+    </script>
+</body>
+</html>
