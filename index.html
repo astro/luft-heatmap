@@ -57,6 +57,7 @@
          console.log('Temperature: ' + minTemperature + '..' + maxTemperature);
          
          var RECT_SIZE = 16;
+         var RECT_CENTER = Math.floor(RECT_SIZE / 2);
          var MAX_DISTANCE = 50000;  /* 50 km */
          var CanvasLayer = L.GridLayer.extend({
              createTile: function(coords, done) {
@@ -72,8 +73,8 @@
                      for(var y = 0; y < tile.height; y += RECT_SIZE) {
                          for(var x = 0; x < tile.width; x += RECT_SIZE) {
                              var location = map.unproject({
-                                 x: coords.x * size.x + x,
-                                 y: coords.y * size.y + y
+                                 x: coords.x * size.x + x + RECT_CENTER,
+                                 y: coords.y * size.y + y + RECT_CENTER
                              }, coords.z);
 
                              var nearestMinDist = null;
