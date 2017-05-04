@@ -9,6 +9,30 @@
     <style>
      #map { margin: 0; padding: 0; width: 100vw; height: 100vh; }
      body { margin: 0; padding: 0; font-family: sans-serif; }
+     .legend {
+         border: 1px solid #333;
+         border-radius: 5px;
+         background-color: white;
+         color: #333;
+         padding: 0.4em 1em;
+         line-height: 1.4em;
+     }
+     .legend .colorbar {
+         display: inline-block;
+         vertical-align: bottom;
+         height: 1em;
+         line-height: 1em;
+         border: 1px solid #111;
+         width: 30vh;
+         padding: 0;
+         margin: 0 0.2em;
+         background: linear-gradient(to right,
+             hsla(270, 100%, 50%, 1) 0%,
+             hsla(180, 100%, 50%, 1) 33%,
+             hsla(90, 100%, 50%, 1) 67%,
+             hsla(0, 100%, 50%, 1) 100%
+         );
+     }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 </head>
@@ -99,11 +123,11 @@
                              temperature /= totalWeight;
 
                              if (nearestMinDist !== null) {
-                                 var phase = Math.max(0, Math.min(180,
-                                                                  180 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+                                 var phase = Math.max(0, Math.min(270,
+                                                                  270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
                                  var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
 
-                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 30%, ' + alpha + ')';
+                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
                                  ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
                              }
                          }
@@ -117,6 +141,20 @@
          });
 
          new CanvasLayer().addTo(map);
+
+         var Legend = L.Control.extend({
+             onAdd: function() {
+                 var container = L.DomUtil.create('div', 'legend');
+                 var span = L.DomUtil.create('span', '', container);
+                 span.textContent = Math.ceil(minTemperature) + '°C';
+                 var span = L.DomUtil.create('span', 'colorbar', container);
+                 span.textContent = ' ';
+                 var span = L.DomUtil.create('span', '', container);
+                 span.textContent = Math.ceil(maxTemperature) + '°C';
+                 return container;
+             }
+         });
+         map.addControl(new Legend({ position: 'bottomleft' }));
      }
      var VALUE_TYPE = 'temperature';
      /* var VALUE_TYPE = 'P1';*/
