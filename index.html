@@ -104,6 +104,7 @@
 
                              var nearestMinDist = null;
                              var temperature = 0;
+                             var alpha = 0;
                              var totalWeight = 0;
                              for(var i = 0; i < data.length; i++) {
                                  var value = data[i];
@@ -118,14 +119,15 @@
                                  }
                                  var weight = MAX_DISTANCE / Math.pow(distance, 10);
                                  temperature += weight * value.temperature;
+                                 alpha += weight * 0.5 * (1 - distance / MAX_DISTANCE);
                                  totalWeight += weight;
                              }
                              temperature /= totalWeight;
+                             alpha /= totalWeight;
 
                              if (nearestMinDist !== null) {
                                  var phase = Math.max(0, Math.min(270,
                                                                   270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
-                                 var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
 
                                  ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
                                  ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
