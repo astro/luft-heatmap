@@ -23,9 +23,13 @@
      }).addTo(map);
 
      var renderQueue = [];
+     var renderPending = false;
      function render(f) {
          renderQueue.push(f);
-         doRender();
+         if (!renderPending) {
+             renderPending = true;
+             doRender();
+         }
      }
      function doRender() {
          requestAnimationFrame(function() {
@@ -33,8 +37,10 @@
              if (f) {
                  f();
                  doRender();
+             } else {
+                 renderPending = false;
              }
-         });
+         }, 40);
      }
 
      function renderData(data) {
