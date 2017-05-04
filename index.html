@@ -83,7 +83,7 @@
          
          var RECT_SIZE = 16;
          var RECT_CENTER = Math.floor(RECT_SIZE / 2);
-         var MAX_DISTANCE = 50000;  /* 50 km */
+         var MAX_DISTANCE = 30000;  /* 30 km */
          var CanvasLayer = L.GridLayer.extend({
              createTile: function(coords, done) {
                  var size = this.getTileSize();
@@ -109,15 +109,12 @@
                              for(var i = 0; i < data.length; i++) {
                                  var value = data[i];
                                  var distance = location.distanceTo(value.location);
-                                 if (distance >= MAX_DISTANCE) {
-                                     continue;
-                                 }
                                  if (nearestMinDist === null ||
                                      distance < nearestMinDist) {
 
                                      nearestMinDist = distance;
                                  }
-                                 var weight = MAX_DISTANCE / Math.pow(distance, 2);
+                                 var weight = MAX_DISTANCE / Math.pow(distance, 4);
                                  temperature += weight * value.temperature;
                                  alpha += weight * 0.5 * (1 - distance / MAX_DISTANCE);
                                  totalWeight += weight;
