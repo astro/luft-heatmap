@@ -117,7 +117,7 @@
 
                                      nearestMinDist = distance;
                                  }
-                                 var weight = MAX_DISTANCE / Math.pow(distance, 10);
+                                 var weight = MAX_DISTANCE / Math.pow(distance, 2);
                                  temperature += weight * value.temperature;
                                  alpha += weight * 0.5 * (1 - distance / MAX_DISTANCE);
                                  totalWeight += weight;
