@@ -21,6 +21,21 @@
          attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
      }).addTo(map);
 
+     var renderQueue = [];
+     function render(f) {
+         renderQueue.push(f);
+         doRender();
+     }
+     function doRender() {
+         requestAnimationFrame(function() {
+             var f = renderQueue.shift();
+             if (f) {
+                 f();
+                 doRender();
+             }
+         });
+     }
+
      function renderData(data) {
          var temperatures = data.map(function(value) {
              return Number(value.temperature);
@@ -37,52 +52,56 @@
          var RECT_SIZE = 16;
          var MAX_DISTANCE = 50000;  /* 50 km */
          var CanvasLayer = L.GridLayer.extend({
-             createTile: function(coords){
+             createTile: function(coords, done) {
                  var size = this.getTileSize();
-                 
+
                  // create a <canvas> element for drawing
                  var tile = L.DomUtil.create('canvas', 'leaflet-tile');
                  tile.width = size.x;
                  tile.height = size.y;
-                 // draw something asynchronously and pass the tile to the done() callback
-                 var ctx = tile.getContext('2d');
-                 for(var y = 0; y < tile.height; y += RECT_SIZE) {
-                     for(var x = 0; x < tile.width; x += RECT_SIZE) {
-                         var location = map.unproject({
-                             x: coords.x * size.x + x,
-                             y: coords.y * size.y + y
-                         }, coords.z);
+                 render(function() {
+                     // draw something asynchronously and pass the tile to the done() callback
+                     var ctx = tile.getContext('2d');
+                     for(var y = 0; y < tile.height; y += RECT_SIZE) {
+                         for(var x = 0; x < tile.width; x += RECT_SIZE) {
+                             var location = map.unproject({
+                                 x: coords.x * size.x + x,
+                                 y: coords.y * size.y + y
+                             }, coords.z);
 
-                         var nearestMinDist = null;
-                         var temperature = 0;
-                         var totalWeight = 0;
-                         for(var i = 0; i < data.length; i++) {
-                             var value = data[i];
-                             var distance = location.distanceTo(value.location);
-                             if (distance >= MAX_DISTANCE) {
-                                 continue;
+                             var nearestMinDist = null;
+                             var temperature = 0;
+                             var totalWeight = 0;
+                             for(var i = 0; i < data.length; i++) {
+                                 var value = data[i];
+                                 var distance = location.distanceTo(value.location);
+                                 if (distance >= MAX_DISTANCE) {
+                                     continue;
+                                 }
+                                 if (nearestMinDist === null ||
+                                     distance < nearestMinDist) {
+
+                                     nearestMinDist = distance;
+                                 }
+                                 var weight = MAX_DISTANCE / Math.pow(distance, 10);
+                                 temperature += weight * value.temperature;
+                                 totalWeight += weight;
                              }
-                             if (nearestMinDist === null ||
-                                 distance < nearestMinDist) {
+                             temperature /= totalWeight;
 
-                                 nearestMinDist = distance;
+                             if (nearestMinDist !== null) {
+                                 var phase = Math.max(0, Math.min(180,
+                                                                  180 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+                                 var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
+
+                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
+                                 ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
                              }
-                             var weight = MAX_DISTANCE / Math.pow(distance, 2);
-                             temperature += weight * value.temperature;
-                             totalWeight += weight;
-                         }
-                         temperature /= totalWeight;
-
-                         if (nearestMinDist !== null) {
-                             var phase = Math.max(0, Math.min(180,
-                                 180 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
-                             var alpha = 0.7 * (1 - nearestMinDist / MAX_DISTANCE);
-
-                             ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
-                             ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
                          }
                      }
-                 }
+
+                     done(null, tile);
+                 });
 
                  return tile;
              }
