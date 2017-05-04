@@ -120,20 +120,27 @@
      var VALUE_TYPE = 'temperature';
      /* var VALUE_TYPE = 'P1';*/
      fetch('https://api.luftdaten.info/static/v1/data.json')
-         .then(res => res.json())
-         .then(json => json.map(sensor => {
-             var temperatureValue = sensor.sensordatavalues.filter(value => value.value_type === VALUE_TYPE)[0];
-             if (temperatureValue) {
-                 return {
-                     temperature: Number(temperatureValue.value),
-                     location: L.latLng(Number(sensor.location.latitude), Number(sensor.location.longitude))
-                 };
-             } else {
-                 return null;
-             }
-         }).filter(value => !! value))
-         .then(data => renderData(data));
-     
+         .then(function(res) {
+             return res.json();
+         }).then(function(json) {
+             return json.map(function(sensor) {
+                 var temperatureValue = sensor.sensordatavalues.filter(function(value) {
+                     return value.value_type === VALUE_TYPE;
+                 })[0];
+                 if (temperatureValue) {
+                     return {
+                         temperature: Number(temperatureValue.value),
+                         location: L.latLng(Number(sensor.location.latitude), Number(sensor.location.longitude))
+                     };
+                 } else {
+                     return null;
+                 }
+             }).filter(function(value) {
+                 return !! value;
+             });
+         }).then(function(data) {
+             return renderData(data)
+         });
 
     </script>
 </body>
