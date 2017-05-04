@@ -26,12 +26,6 @@
          width: 30vh;
          padding: 0;
          margin: 0 0.2em;
-         background: linear-gradient(to right,
-             hsla(270, 100%, 50%, 1) 0%,
-             hsla(180, 100%, 50%, 1) 33%,
-             hsla(90, 100%, 50%, 1) 67%,
-             hsla(0, 100%, 50%, 1) 100%
-         );
      }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
@@ -150,6 +144,18 @@
                  span.textContent = Math.floor(minTemperature) + '°C';
                  var span = L.DomUtil.create('span', 'colorbar', container);
                  span.textContent = ' ';
+                 var colorbarBackground = [];
+                 for(var i = 0; i <= 100; i++) {
+                     colorbarBackground.push(
+                         'hsla(' + Math.floor(i * 270 / 100) +
+                         ', 100%, 50%, 1) ' +
+                         i + '%'
+                     );
+                 }
+                 span.style.background =
+                     'linear-gradient(to left,' +
+                     colorbarBackground.join(',') +
+                     ')';
                  var span = L.DomUtil.create('span', '', container);
                  span.textContent = Math.ceil(maxTemperature) + '°C';
                  return container;
