@@ -142,7 +142,9 @@
              }
          });
 
-         new CanvasLayer().addTo(map);
+         new CanvasLayer({
+             tileSize: 128
+         }).addTo(map);
 
          var Legend = L.Control.extend({
              onAdd: function() {
