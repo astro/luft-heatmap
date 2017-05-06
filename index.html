@@ -5,7 +5,6 @@
     <title>Luftdaten-Heatmap</title>
     <link rel="stylesheet" href="leaflet.css" />
     <script src="leaflet.js"></script>
-    <script src="leaflet-heat.js"></script>
     <style>
      #map { margin: 0; padding: 0; width: 100vw; height: 100vh; }
      body { margin: 0; padding: 0; font-family: sans-serif; }
@@ -70,14 +69,14 @@
          });
 
          // 10% percentile
-         var minTemperature = temperatures[Math.floor(.10 * temperatures.length)];
+         var minTemperature = temperatures[Math.floor(.05 * temperatures.length)];
          // 90% percentile
-         var maxTemperature = temperatures[Math.floor(.90 * temperatures.length)];
+         var maxTemperature = temperatures[Math.floor(.95 * temperatures.length)];
          console.log('Temperature: ' + minTemperature + '..' + maxTemperature);
          
          var RECT_SIZE = 16;
          var RECT_CENTER = Math.floor(RECT_SIZE / 2);
-         var MAX_DISTANCE = 30000;  /* 30 km */
+         var MAX_DISTANCE = 200000;  /* meters */
          var CanvasLayer = L.GridLayer.extend({
              createTile: function(coords, done) {
                  var size = this.getTileSize();
@@ -108,9 +107,9 @@
 
                                      nearestMinDist = distance;
                                  }
-                                 var weight = Math.pow(MAX_DISTANCE / distance, 2);
+                                 var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
                                  temperature += weight * value.temperature;
-                                 alpha += weight * 0.9 * (1 - distance / MAX_DISTANCE);
+                                 alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
                                  totalWeight += weight;
                              }
                              temperature /= totalWeight;
