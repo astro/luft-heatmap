@@ -95,18 +95,12 @@
                                  y: coords.y * size.y + y + RECT_CENTER
                              }, coords.z);
 
-                             var nearestMinDist = null;
                              var temperature = 0;
                              var alpha = 0;
                              var totalWeight = 0;
                              for(var i = 0; i < data.length; i++) {
                                  var value = data[i];
                                  var distance = location.distanceTo(value.location);
-                                 if (nearestMinDist === null ||
-                                     distance < nearestMinDist) {
-
-                                     nearestMinDist = distance;
-                                 }
                                  var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
                                  temperature += weight * value.temperature;
                                  alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
@@ -115,7 +109,7 @@
                              temperature /= totalWeight;
                              alpha /= totalWeight;
 
-                             if (nearestMinDist !== null) {
+                             if (totalWeight > 0) {
                                  var phase = Math.max(0, Math.min(270,
                                                                   270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
 
