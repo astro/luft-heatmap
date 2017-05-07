@@ -44,21 +44,26 @@
      var renderPending = false;
      function render(f) {
          renderQueue.push(f);
-         if (!renderPending) {
-             renderPending = true;
-             doRender();
+         queueRender();
+     }
+     function renderNext() {
+         var f = renderQueue.shift();
+         if (f) {
+             f();
+
+             if (renderQueue.length > 0) {
+                 queueRender();
+             }
          }
      }
-     function doRender() {
-         requestAnimationFrame(function() {
-             var f = renderQueue.shift();
-             if (f) {
-                 f();
-                 doRender();
-             } else {
+     function queueRender() {
+         if (!renderPending) {
+             renderPending = true;
+             requestAnimationFrame(function() {
                  renderPending = false;
-             }
-         });
+                 renderNext();
+             });
+         }
      }
 
      function renderData(data) {
@@ -73,61 +78,96 @@
          // 90% percentile
          var maxTemperature = temperatures[Math.floor(.95 * temperatures.length)];
          console.log('Temperature: ' + minTemperature + '..' + maxTemperature);
-         
-         var RECT_SIZE = 16;
-         var RECT_CENTER = Math.floor(RECT_SIZE / 2);
+
+         var displayedTiles = {};
+
          var MAX_DISTANCE = 200000;  /* meters */
          var CanvasLayer = L.GridLayer.extend({
-             createTile: function(coords, done) {
-                 var size = this.getTileSize();
+	     initialize: function (options) {
+                 L.GridLayer.prototype.initialize.call(this, options);
 
+                 this.on('tileunload', function(info) {
+                     var coordsKey = [info.coords.x, info.coords.y, info.coords.z].join(':');
+                     console.log('tileunload', coordsKey);
+                     delete displayedTiles[coordsKey];
+                 });
+	     },
+
+             createTile: function(coords, done) {
+                 var coordsKey = [coords.x, coords.y, coords.z].join(':');
+                 displayedTiles[coordsKey] = true;
+
+                 var size = this.getTileSize();
                  // create a <canvas> element for drawing
                  var tile = L.DomUtil.create('canvas', 'leaflet-tile');
                  tile.width = size.x;
                  tile.height = size.y;
-                 render(function() {
-                     // draw something asynchronously and pass the tile to the done() callback
-                     var ctx = tile.getContext('2d');
-                     for(var y = 0; y < tile.height; y += RECT_SIZE) {
-                         for(var x = 0; x < tile.width; x += RECT_SIZE) {
-                             var location = map.unproject({
-                                 x: coords.x * size.x + x + RECT_CENTER,
-                                 y: coords.y * size.y + y + RECT_CENTER
-                             }, coords.z);
 
-                             var temperature = 0;
-                             var alpha = 0;
-                             var totalWeight = 0;
-                             for(var i = 0; i < data.length; i++) {
-                                 var value = data[i];
-                                 var distance = location.distanceTo(value.location);
-                                 var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
-                                 temperature += weight * value.temperature;
-                                 alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
-                                 totalWeight += weight;
-                             }
-                             temperature /= totalWeight;
-                             alpha /= totalWeight;
+                 var hasDone = false;
+                 function drawIteration(rectSize) {
+                     var rectCenter = Math.ceil(rectSize / 2);
 
-                             if (totalWeight > 0) {
-                                 var phase = Math.max(0, Math.min(270,
-                                                                  270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+                     render(function() {
+                         if (! displayedTiles[coordsKey]) {
+                             /* no longer displayed */
+                             return renderNext();
+                         }
 
-                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
-                                 ctx.fillRect(x, y, RECT_SIZE, RECT_SIZE);
+                         console.log('render', coordsKey, 'at', rectSize);
+                         // draw something asynchronously and pass the tile to the done() callback
+                         var ctx = tile.getContext('2d');
+                         ctx.clearRect(0, 0, tile.width, tile.height);
+                         for(var y = 0; y < tile.height; y += rectSize) {
+                             for(var x = 0; x < tile.width; x += rectSize) {
+                                 var location = map.unproject({
+                                     x: coords.x * size.x + x + rectCenter,
+                                     y: coords.y * size.y + y + rectCenter
+                                 }, coords.z);
+
+                                 var temperature = 0;
+                                 var alpha = 0;
+                                 var totalWeight = 0;
+                                 for(var i = 0; i < data.length; i++) {
+                                     var value = data[i];
+                                     var distance = location.distanceTo(value.location);
+                                     var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
+                                     temperature += weight * value.temperature;
+                                     alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
+                                     totalWeight += weight;
+                                 }
+                                 temperature /= totalWeight;
+                                 alpha /= totalWeight;
+
+                                 if (totalWeight > 0) {
+                                     var phase = Math.max(0, Math.min(270,
+                                                                      270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+
+                                     ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
+                                     ctx.fillRect(x, y, rectSize, rectSize);
+                                 }
                              }
                          }
-                     }
 
-                     done(null, tile);
-                 });
+                         if (!hasDone) {
+                             done(null, true);
+                             hasDone = true;
+                         }
+
+                         // Recurse with higher level of detail
+                         if (rectSize > 2 && displayedTiles[coordsKey]) {
+                             drawIteration(Math.floor(rectSize / 2));
+                         }
+                     });
+                 }
+
+                 drawIteration(64);
 
                  return tile;
              }
          });
 
          new CanvasLayer({
-             tileSize: 128
+             tileSize: 64
          }).addTo(map);
 
          var Legend = L.Control.extend({
