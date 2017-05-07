@@ -47,13 +47,14 @@
          queueRender();
      }
      function renderNext() {
-         var f = renderQueue.shift();
-         if (f) {
+         var start = Date.now();
+         while (Date.now() < start + 50 && renderQueue.length > 0) {
+             var f = renderQueue.shift();
              f();
+         }
 
-             if (renderQueue.length > 0) {
-                 queueRender();
-             }
+         if (renderQueue.length > 0) {
+             queueRender();
          }
      }
      function queueRender() {
@@ -104,7 +105,7 @@
                  tile.height = size.y;
 
                  var hasDone = false;
-                 function drawIteration(rectSize) {
+                 function drawIteration(rectSize, y) {
                      var rectCenter = Math.ceil(rectSize / 2);
 
                      render(function() {
@@ -116,58 +117,62 @@
                          console.log('render', coordsKey, 'at', rectSize);
                          // draw something asynchronously and pass the tile to the done() callback
                          var ctx = tile.getContext('2d');
-                         ctx.clearRect(0, 0, tile.width, tile.height);
-                         for(var y = 0; y < tile.height; y += rectSize) {
-                             for(var x = 0; x < tile.width; x += rectSize) {
-                                 var location = map.unproject({
-                                     x: coords.x * size.x + x + rectCenter,
-                                     y: coords.y * size.y + y + rectCenter
-                                 }, coords.z);
+                         ctx.clearRect(0, y, tile.width, rectSize);
+                         for(var x = 0; x < tile.width; x += rectSize) {
+                             var location = map.unproject({
+                                 x: coords.x * size.x + x + rectCenter,
+                                 y: coords.y * size.y + y + rectCenter
+                             }, coords.z);
 
-                                 var temperature = 0;
-                                 var alpha = 0;
-                                 var totalWeight = 0;
-                                 for(var i = 0; i < data.length; i++) {
-                                     var value = data[i];
-                                     var distance = location.distanceTo(value.location);
-                                     var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
-                                     temperature += weight * value.temperature;
-                                     alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
-                                     totalWeight += weight;
-                                 }
-                                 temperature /= totalWeight;
-                                 alpha /= totalWeight;
+                             var temperature = 0;
+                             var alpha = 0;
+                             var totalWeight = 0;
+                             for(var i = 0; i < data.length; i++) {
+                                 var value = data[i];
+                                 var distance = location.distanceTo(value.location);
+                                 var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
+                                 temperature += weight * value.temperature;
+                                 alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
+                                 totalWeight += weight;
+                             }
+                             temperature /= totalWeight;
+                             alpha /= totalWeight;
 
-                                 if (totalWeight > 0) {
-                                     var phase = Math.max(0, Math.min(270,
-                                                                      270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
+                             if (totalWeight > 0) {
+                                 var phase = Math.max(0, Math.min(270,
+                                                                  270 * (1 - (temperature - minTemperature) / (maxTemperature - minTemperature))));
 
-                                     ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
-                                     ctx.fillRect(x, y, rectSize, rectSize);
-                                 }
+                                 ctx.fillStyle = 'hsla(' + Math.floor(phase) + ', 100%, 50%, ' + alpha + ')';
+                                 ctx.fillRect(x, y, rectSize, rectSize);
                              }
                          }
 
-                         if (!hasDone) {
-                             done(null, true);
-                             hasDone = true;
-                         }
+                         if (y < tile.height) {
+                             // Next scanline
+                             drawIteration(rectSize, y + rectSize);
+                         } else {
+                             if (!hasDone) {
+                                 done(null, true);
+                                 hasDone = true;
+                             }
 
-                         // Recurse with higher level of detail
-                         if (rectSize > 2 && displayedTiles[coordsKey]) {
-                             drawIteration(Math.floor(rectSize / 2));
+                             rectSize = Math.floor(rectSize / 4);
+                             if (rectSize > 1 && displayedTiles[coordsKey]) {
+                                 // Recurse with higher level of detail
+                                 drawIteration(rectSize, 0);
+                             }
                          }
                      });
                  }
 
-                 drawIteration(64);
+                 drawIteration(32, 0);
 
                  return tile;
              }
          });
 
          new CanvasLayer({
-             tileSize: 64
+             tileSize: 128
          }).addTo(map);
 
          var Legend = L.Control.extend({
