@@ -132,7 +132,7 @@
                                  var distance = location.distanceTo(value.location);
                                  var weight = Math.pow(0.5 * MAX_DISTANCE / distance, 4);
                                  temperature += weight * value.temperature;
-                                 alpha += weight * 0.8 * (1 - distance / MAX_DISTANCE);
+                                 alpha += weight * 0.5 * (1 - distance / MAX_DISTANCE);
                                  totalWeight += weight;
                              }
                              temperature /= totalWeight;
