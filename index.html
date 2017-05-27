@@ -40,17 +40,32 @@
          attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
      }).addTo(map);
 
+     var renderQueueSorted = true;
      var renderQueue = [];
      var renderPending = false;
-     function render(f) {
-         renderQueue.push(f);
+     function render(f, prio) {
+         renderQueue.push({
+             f: f,
+             prio: prio
+         });
+         renderQueueSorted = false;
          queueRender();
+     }
+     function sortRenderQueue() {
+         renderQueue = renderQueue.sort(function(a, b) {
+             return b.prio - a.prio;
+         });
      }
      function renderNext() {
          var start = Date.now();
+         if (!renderQueueSorted) {
+             sortRenderQueue();
+             renderQueueSorted = true;
+         }
+
          while (Date.now() < start + 50 && renderQueue.length > 0) {
-             var f = renderQueue.shift();
-             f();
+             var item = renderQueue.shift();
+             item.f();
          }
 
          if (renderQueue.length > 0) {
@@ -107,6 +122,7 @@
                  var hasDone = false;
                  function drawIteration(rectSize, y) {
                      var rectCenter = Math.ceil(rectSize / 2);
+                     var prio = 512 * rectSize - coords.y - (y - (coords.x / 512)) / 512;
 
                      render(function() {
                          if (! displayedTiles[coordsKey]) {
@@ -162,7 +178,7 @@
                                  drawIteration(rectSize, 0);
                              }
                          }
-                     });
+                     }, prio);
                  }
 
                  drawIteration(32, 0);
